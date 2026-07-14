@@ -35,6 +35,7 @@ cd build
 cmake ..
 make
 ./ConditionVariables
+```
 
 ## Notes:
 
@@ -45,14 +46,24 @@ In the consumer thread, you see this pattern:
 ```cpp
 std::unique_lock<std::mutex> lock(buffer_mutex);
 cv.wait(lock, [] { return !bufferQueue.empty(); });
+```
 
 ✅ What happens during cv.wait():
+
 The lock is already held when you enter wait().
+
 cv.wait() atomically:
-Releases the lock (so other threads can access the shared data)
-Puts the thread to sleep (waiting for a notify)
+
+- Releases the lock (so other threads can access the shared data)
+
+- Puts the thread to sleep (waiting for a notify)
+
 When another thread calls cv.notify_one():
-This thread wakes up
-Re-acquires the lock before exiting wait()
-Then checks the predicate (!bufferQueue.empty())
+
+- This thread wakes up
+
+- Re-acquires the lock before exiting wait()
+
+- Then checks the predicate (!bufferQueue.empty())
+
 🔁 This cycle ensures no race condition between checking the queue and waiting.
