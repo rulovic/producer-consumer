@@ -1,69 +1,83 @@
-# C++ Threading Practice: Producer-Consumer with `std::condition_variable`
+# C++ Threading Practice: Producer-Consumer Examples
 
-A simple and educational example demonstrating the use of `std::condition_variable`, `std::mutex`, and `std::thread` in C++ to implement a **Producer-Consumer** pattern.
+Educational C++ examples demonstrating the **Producer-Consumer** pattern with `std::condition_variable`, `std::mutex`, and `std::thread`.
 
-This project helps understand:
-- Thread synchronization
-- Safe data sharing between threads
-- How to avoid busy-waiting using condition variables
-- Proper use of `std::unique_lock` and predicate-based `wait()`
+Each example is a separate executable so you can build and run them independently.
 
-## 🔧 Code Overview
+## Project layout
 
-The program consists of:
-- One **producer thread** that generates numbers (1 to 10) and adds them to a shared queue.
-- One **consumer thread** that waits for data and processes it safely.
-- A `std::condition_variable` to notify the consumer when new data is available.
+```
+producer-consumer/
+├── CMakeLists.txt
+└── examples/
+    ├── condition_variable/main.cpp   # single producer, single consumer
+    └── bounded_buffer/main.cpp       # bounded queue, multiple producers/consumers
+```
 
-### 📌 Key Components
-- `std::queue<int>` – shared buffer (protected by mutex)
-- `std::mutex` – ensures thread-safe access
-- `std::condition_variable` – coordinates threads efficiently (no polling)
-- `std::unique_lock<std::mutex>` – RAII lock for safe locking/unlocking
+## Examples
 
-## 🚀 Build & Run
+### 1. `condition_variable`
+
+A minimal producer-consumer setup:
+
+- One **producer** pushes numbers 1–10 into a shared queue
+- One **consumer** waits for data and processes it safely
+- A single `std::condition_variable` avoids busy-waiting
+
+**Key components:** `std::queue`, `std::mutex`, `std::condition_variable`, `std::unique_lock`
+
+### 2. `bounded_buffer`
+
+A fixed-capacity buffer with multiple threads:
+
+- `BoundedBuffer<T>` template class with a max queue size
+- Two **producers** and two **consumers**
+- Producers block when the buffer is full (`notFull`)
+- Consumers block when the buffer is empty (`notEmpty`)
+- Items are encoded as `producer_id * 100 + index` so output is easy to trace
+
+**Key components:** two condition variables (`notFull`, `notEmpty`), predicate-based `wait()`, synchronized logging via a dedicated `log_mutex`
+
+## Build & Run
 
 ### Prerequisites
+
 - C++17 or later
-- CMake (optional, for building)
-- Compiler with C++ threading support (g++, clang++, MSVC)
+- CMake
+- A compiler with threading support (g++, clang++, MSVC)
 
 ### Using CMake
+
 ```bash
 mkdir build
 cd build
 cmake ..
 cmake --build .
-./condition_variable   # single producer / single consumer
-./bounded_buffer       # practice exercise (not implemented yet)
+./condition_variable   # example 1
+./bounded_buffer       # example 2
+```
 
-## Notes:
+## Notes
 
-### 🔍 Why Must the Mutex Be Locked Before `cv.wait()`?
+### Why must the mutex be locked before `cv.wait()`?
 
-In the consumer thread, you see this pattern:
+In the `condition_variable` example, the consumer uses:
 
 ```cpp
 std::unique_lock<std::mutex> lock(buffer_mutex);
 cv.wait(lock, [] { return !bufferQueue.empty(); });
 ```
 
-✅ What happens during cv.wait():
+What happens during `cv.wait()`:
 
-The lock is already held when you enter wait().
+1. The lock is already held when you enter `wait()`
+2. `cv.wait()` atomically releases the lock and puts the thread to sleep
+3. When another thread calls `cv.notify_one()`, this thread wakes up
+4. It re-acquires the lock before exiting `wait()`
+5. It then checks the predicate (`!bufferQueue.empty()`)
 
-cv.wait() atomically:
+This cycle prevents a race between checking the queue and going to sleep.
 
-- Releases the lock (so other threads can access the shared data)
+### Why is console output synchronized in `bounded_buffer`?
 
-- Puts the thread to sleep (waiting for a notify)
-
-When another thread calls cv.notify_one():
-
-- This thread wakes up
-
-- Re-acquires the lock before exiting wait()
-
-- Then checks the predicate (!bufferQueue.empty())
-
-🔁 This cycle ensures no race condition between checking the queue and waiting.
+`std::cout` is not thread-safe. Without a logging mutex, lines from different threads can interleave and produce garbled output. That is a display issue, not a buffer bug — the `BoundedBuffer` synchronization remains correct either way.
