@@ -33,9 +33,9 @@ The program consists of:
 mkdir build
 cd build
 cmake ..
-make
-./ConditionVariables
-```
+cmake --build .
+./condition_variable   # single producer / single consumer
+./bounded_buffer       # practice exercise (not implemented yet)
 
 ## Notes:
 

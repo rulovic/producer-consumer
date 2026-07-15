@@ -23,7 +23,7 @@ void producer() {
         bufferQueue.push(i);
         std::cout << "Produced: " << i << std::endl;
         // Optional: Explicitly releases the lock before notifying.
-        // It is good practice, because it ensures the consumer 
+        // It is good practice, because it ensures the consumer
         // doesn’t block trying to re-lock while notification happens.
         lock.unlock();
         // Wakes up one waiting thread (the consumer) that is blocked on cv.wait().
@@ -41,7 +41,7 @@ void consumer() {
         // Locks the mutex before checking or modifying the queue.
         std::unique_lock<std::mutex> lock(buffer_mutex);
         // Wait until queue is not empty or we're done
-        cv.wait(lock, [] { 
+        cv.wait(lock, [] {
             return !bufferQueue.empty() || finished;
         });
 
